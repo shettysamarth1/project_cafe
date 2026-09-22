@@ -1,8 +1,8 @@
 /**
  * COVERSE CAFE, MANGALURU
  * Master Atmospheric & Scroll-Linked Photo Engine
- * Reversible scroll scrubbing across 3 authentic Coverse scenes,
- * organic lighting transitions, and minimal editorial interactions.
+ * High-performance, non-overlapping reversible scroll scrubbing
+ * across 3 authentic Coverse scenes.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. HEADER COMPACTION & SECTION ACTIVE TRACKING
   // =========================================================================
   function handleHeaderState() {
-    if (window.scrollY > 50) {
+    if (window.scrollY > 40) {
       header.classList.add('scrolled');
     } else {
       header.classList.remove('scrolled');
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // =========================================================================
   // 2. CONTINUOUS SCROLL-LINKED PHOTO EXPERIENCE (3 AUTHENTIC SCENES)
-  // Reversible, smooth, strictly linked to scroll position
+  // Perfectly reversible, non-overlapping captions, responsive scrubbing
   // =========================================================================
   let targetProgress = 0;
   let currentProgress = 0;
@@ -111,24 +111,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function calculateScrollProgress() {
     if (!journeySection) return;
+    const rect = journeySection.getBoundingClientRect();
     const scrollableDistance = journeySection.offsetHeight - window.innerHeight;
     if (scrollableDistance <= 0) return;
 
-    const journeyTop = window.scrollY - journeySection.offsetTop;
-    let progress = journeyTop / scrollableDistance;
+    // How far the top of the journey section has scrolled above the viewport:
+    const scrolled = -rect.top;
+    const progress = scrolled / scrollableDistance;
 
     // Clamp strictly between 0 and 1
     targetProgress = Math.max(0, Math.min(1, progress));
   }
 
-  // Linear Interpolation (Lerp) Frame Loop
+  // Linear Interpolation (Lerp) Frame Loop for high-refresh rendering
   function renderJourneyFrame() {
-    // Smooth lerp easing
-    currentProgress += (targetProgress - currentProgress) * 0.12;
+    // Responsive lerp easing
+    currentProgress += (targetProgress - currentProgress) * 0.18;
 
-    // Segment length = 1 / (numSlides - 1) = 0.5 for 3 slides
-    const segmentLength = 1 / (numSlides - 1);
-    const virtualIndex = currentProgress / segmentLength; // 0.0 to 2.0
+    // Segment calculation for 3 slides:
+    // Virtual index ranges from 0.0 to 2.0
+    const segmentLength = 1 / (numSlides - 1); // 0.5
+    const virtualIndex = currentProgress / segmentLength;
     const baseIndex = Math.min(Math.floor(virtualIndex), numSlides - 2);
     const segmentRatio = (currentProgress - (baseIndex * segmentLength)) / segmentLength;
     const clampedRatio = Math.max(0, Math.min(1, segmentRatio));
@@ -138,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hudIndicator.style.width = `${currentProgress * 100}%`;
     }
 
-    // Update HUD Active Pill
+    // Active pill based on nearest stage
     const activePillIndex = Math.round(virtualIndex);
     hudPills.forEach((pill, idx) => {
       pill.classList.toggle('active', idx === activePillIndex);
@@ -149,41 +152,77 @@ document.addEventListener('DOMContentLoaded', () => {
       const photo = slide.querySelector('.slide-photo');
       const caption = slide.querySelector('.slide-caption');
 
-      let opacity = 0;
-      let scale = 1.05;
-      let translateY = 0;
-      let blur = 0;
+      let slideOpacity = 0;
+      let photoScale = 1.05;
+      let photoTranslateY = 0;
+      let photoBlur = 0;
+
+      let captionOpacity = 0;
+      let captionTranslateY = 20;
 
       if (index === baseIndex) {
-        // Exiting slide as user scrolls down
-        opacity = 1 - clampedRatio;
-        scale = 1.0 + (0.05 * (1 - clampedRatio));
-        translateY = -22 * clampedRatio;
-        blur = clampedRatio * 2.5;
+        // Outgoing slide
+        slideOpacity = 1 - clampedRatio;
+        photoScale = 1.0 + (0.05 * (1 - clampedRatio));
+        photoTranslateY = -20 * clampedRatio;
+        photoBlur = clampedRatio * 2;
+
+        // Caption fades out cleanly in the first half of the transition
+        // (Between 0.0 and 0.35: full opacity; 0.35 to 0.46: fades to 0; >0.46: 0)
+        if (clampedRatio < 0.35) {
+          captionOpacity = 1;
+          captionTranslateY = 0;
+        } else if (clampedRatio < 0.46) {
+          const fadeProgress = (clampedRatio - 0.35) / 0.11;
+          captionOpacity = 1 - fadeProgress;
+          captionTranslateY = -25 * fadeProgress;
+        } else {
+          captionOpacity = 0;
+          captionTranslateY = -25;
+        }
       } else if (index === baseIndex + 1) {
-        // Entering slide as user scrolls down
-        opacity = clampedRatio;
-        scale = 1.05 - (0.05 * clampedRatio);
-        translateY = 22 * (1 - clampedRatio);
-        blur = (1 - clampedRatio) * 2.5;
+        // Incoming slide
+        slideOpacity = clampedRatio;
+        photoScale = 1.05 - (0.05 * clampedRatio);
+        photoTranslateY = 20 * (1 - clampedRatio);
+        photoBlur = (1 - clampedRatio) * 2;
+
+        // Caption fades in cleanly in the second half of the transition
+        // (<0.54: 0 opacity; 0.54 to 0.65: fades to 1; >0.65: full opacity)
+        if (clampedRatio > 0.65) {
+          captionOpacity = 1;
+          captionTranslateY = 0;
+        } else if (clampedRatio > 0.54) {
+          const fadeProgress = (clampedRatio - 0.54) / 0.11;
+          captionOpacity = fadeProgress;
+          captionTranslateY = 25 * (1 - fadeProgress);
+        } else {
+          captionOpacity = 0;
+          captionTranslateY = 25;
+        }
       } else {
-        opacity = 0;
-        scale = 1.05;
-        translateY = 25;
-        blur = 3;
+        // Inactive slide
+        slideOpacity = 0;
+        photoScale = 1.05;
+        photoTranslateY = 25;
+        photoBlur = 3;
+        captionOpacity = 0;
+        captionTranslateY = 25;
       }
 
-      slide.style.opacity = opacity.toFixed(4);
-      slide.style.visibility = opacity > 0.005 ? 'visible' : 'hidden';
+      slide.style.opacity = slideOpacity.toFixed(4);
+      slide.style.visibility = slideOpacity > 0.005 ? 'visible' : 'hidden';
+      slide.classList.toggle('active', index === activePillIndex);
 
       if (photo) {
-        photo.style.transform = `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(1)}px)`;
-        photo.style.filter = `contrast(1.06) brightness(0.82) blur(${blur.toFixed(1)}px)`;
+        photo.style.transform = `scale(${photoScale.toFixed(3)}) translateY(${photoTranslateY.toFixed(1)}px)`;
+        photo.style.filter = `contrast(1.06) brightness(0.82) blur(${photoBlur.toFixed(1)}px)`;
       }
 
       if (caption) {
-        caption.style.opacity = Math.pow(opacity, 1.3).toFixed(3);
-        caption.style.transform = `translateY(${(translateY * 0.6).toFixed(1)}px)`;
+        caption.style.opacity = captionOpacity.toFixed(4);
+        caption.style.transform = `translateY(${captionTranslateY.toFixed(1)}px)`;
+        caption.style.visibility = captionOpacity > 0.01 ? 'visible' : 'hidden';
       }
     });
 
@@ -207,6 +246,30 @@ document.addEventListener('DOMContentLoaded', () => {
         top: targetScroll,
         behavior: 'smooth'
       });
+    });
+  });
+
+  // Smooth anchor navigation clicks
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const href = this.getAttribute('href');
+      if (href === '#') return;
+      const targetEl = document.querySelector(href);
+      if (targetEl) {
+        e.preventDefault();
+        const headerOffset = 65;
+        const elementPosition = targetEl.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+
+        if (history.pushState) {
+          history.pushState(null, null, href);
+        }
+      }
     });
   });
 

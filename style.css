@@ -59,7 +59,6 @@ body.theme-sunlit {
 }
 
 html {
-  scroll-behavior: smooth;
   font-size: 16px;
   background-color: var(--bg-core);
   color: var(--text-main);
@@ -76,6 +75,10 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   transition: background-color 0.8s ease;
+}
+
+section {
+  scroll-margin-top: 70px;
 }
 
 a {
@@ -571,7 +574,6 @@ body.theme-sunlit .switch-thumb {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.5s ease;
   will-change: opacity, transform;
 }
 
@@ -597,7 +599,7 @@ body.theme-sunlit .switch-thumb {
   object-position: center;
   transform: scale(1.05);
   filter: contrast(1.06) brightness(0.82);
-  transition: transform 0.6s var(--ease-cinematic);
+  will-change: transform, filter;
 }
 
 /* Multi-directional Feather Masks: Merges photo into surrounding space */
@@ -657,14 +659,7 @@ body.theme-sunlit .switch-thumb {
   -webkit-backdrop-filter: blur(24px);
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  transform: translateY(18px);
-  opacity: 0;
-  transition: all 0.6s var(--ease-cinematic);
-}
-
-.journey-slide.active .slide-caption {
-  transform: translateY(0);
-  opacity: 1;
+  will-change: opacity, transform;
 }
 
 .caption-index {
